@@ -1,1 +1,60 @@
+import { obterCabecalhos } from './login.js';
+import { abrirPreview } from './visualizacao.js';
 
+const cache = new Map();
+
+export async function buscarProjetos() {
+  const termo = document.getElementById('userInput').value.trim();
+  const lista = document.getElementById('listaRepos');
+  if (!termo) { lista.innerHTML = '<div style="padding:20px;text-align:center">Digite algo</div>'; return; }
+  if (cache.has(termo)) { renderizarLista(cache.get(termo), lista); return; }
+
+  lista.innerHTML = '<div style="padding:20px;text-align:center">Buscando...</div>';
+  try {
+    const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(termo)}+has:pages+language:html+language:javascript+language:css&sort=updated&per_page=30`;
+    const res = await fetch(url, { headers: obterCabecalhos() });
+    
+    if (res.status === 403) {
+      const reset = res.headers.get('X-RateLimit-Reset');
+      const espera = reset ? Math.ceil((parseInt(reset)*1000 - Date.now())/60000) : 5;
+      lista.innerHTML = `<div style="padding:20px;text-align:center;color:#f85149">Limite! Aguarde ${espera}min ou entre com conta.</div>`;
+      return;
+    }
+    if (!res.ok) throw new Error(`Erro ${res.status}: ${res.statusText}`);
+    const dados = await res.json();
+    cache.set(termo, dados.items);
+    renderizarLista(dados.items, lista);
+  } catch (e) {
+    lista.innerHTML = `<div style="padding:20px;text-align:center;color:#f85149">Erro: ${e.message}</div>`;
+  }
+}
+
+function renderizarLista(itens, lista) {
+  lista.innerHTML = '';
+  itens.forEach(repo => {
+    const cor = repo.language === 'HTML' ? '#e34c26' : repo.language === 'CSS' ? '#563d7c' : '#f1e05a';
+    const item = document.createElement('div');
+    item.className = 'repo-item';
+    item.onclick = async () => abrirPreview(await obterUrlPagina(repo), repo.name, repo.html_url);
+    item.innerHTML = `
+      <div class="repo-header">
+        <span class="repo-name">${repo.name}</span>
+        <span class="badge">${repo.private ? 'Privado' : 'Público'}</span>
+      </div>
+      <span class="repo-desc">${repo.description || 'Sem descrição'}</span>
+      <div class="repo-meta">
+        <span><span class="lang-dot" style="background:${cor}"></span>${repo.language || 'Não definida'}</span>
+        <span>👤 ${repo.owner.login}</span>
+        <span>⭐ ${repo.stargazers_count}</span>
+      </div>`;
+    lista.appendChild(item);
+  });
+}
+
+async function obterUrlPagina(repo) {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo.full_name}/pages`, { headers: obterCabecalhos() });
+    if (res.ok) { const d=await res.json(); if(d.html_url)return d.html_url; if(d.cname)return`https://${d.cname}`; }
+    return repo.name.endsWith('.github.io') ? `https://${repo.owner.login}.github.io/` : `https://${repo.owner.login}.github.io/${repo.name}/`;
+  } catch { return `https://${repo.owner.login}.github.io/${repo.name}/`; }
+}
