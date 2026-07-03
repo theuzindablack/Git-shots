@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
-    <!-- Área do usuário no canto superior direito -->
     <div class="user-header">
         <div id="loginArea">
             <button class="gh-btn" id="loginBtn">Entrar com GitHub</button>
@@ -28,7 +27,7 @@
                 <input type="text" id="userInput" placeholder="Nome, usuário ou assunto...">
                 <button class="gh-btn" id="buscarBtn">Buscar</button>
             </div>
-            <p class="info-text" id="limiteInfo">Sem login: 60 req/hora | Logado: 5000 req/hora</p>
+            <p class="info-text" id="limiteInfo"></p>
         </div>
         <div class="repo-list" id="listaRepos">
             <div class="no-selection">
@@ -46,7 +45,6 @@
         </div>
     </main>
 
-    <!-- Importa como módulo para funcionar a separação dos arquivos -->
     <script type="module" src="js/principal.js"></script>
 </body>
 </html>
